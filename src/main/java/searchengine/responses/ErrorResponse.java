@@ -10,12 +10,13 @@ import lombok.EqualsAndHashCode;
 //    private boolean result;
 
     public ErrorResponse(String error) {
+        setResult(false);
         this.error = error;
     }
-        public boolean getResult() {
-            return false;
-        }
-        public String getError() {
-            return error;
-        }
+//        public boolean getResult() {
+//            return false;
+//        }
+//        public String getError() {
+//            return error;
+//        }
 }

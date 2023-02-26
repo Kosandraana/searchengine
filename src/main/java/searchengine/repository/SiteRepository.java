@@ -12,16 +12,15 @@ import java.util.Optional;
 
 @Repository
 public interface SiteRepository extends JpaRepository<Site, Integer> {
-//    Optional<Site> findByUrlAndStatus(String url, String status);
-//    Optional<Site> findByNameAndStatus(String name, String status);
-//    Integer countByStatus(String status);
-//    List<Site> findAllByStatus(String status);
-//    @Transactional
-//    void deleteByStatus(String status);
-//    int countAllBy();
+    Optional<Site> findByUrlAndStatus(String url, String status);
+    Optional<Site> findByNameAndStatus(String name, String status);
+    Integer countByStatus(String status);
+    List<Site> findAllByStatus(String status);
+    @Transactional
+    void deleteByStatus(String status);
 //
 //    @Modifying(clearAutomatically = true, flushAutomatically = true)
 //    @Query(value = "alter table site auto_increment = 0", nativeQuery = true)
 //    void resetIdOnSite();
-    Site findByUrl (String url);
+//    Site findByUrl (String url);
 }

@@ -8,12 +8,13 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
 
 @Getter
 @Setter
 @Entity
-//@Table(name = "page", indexes = {@Index(columnList = "path", name = "path_index")})
+//@Table(name = "page", indexes = {@Index(columnList = "path", name = "path_index", unique = true)})
 @Table(name = "page")
 public class Page implements Serializable {
     @Id
@@ -30,8 +31,9 @@ public class Page implements Serializable {
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "site_id", referencedColumnName = "id", nullable = false)
-//    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "site_id", referencedColumnName = "id", nullable = false,
+            foreignKey = @ForeignKey(name = "FK_page_site"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Site site;
 
 //    @OneToMany(cascade = CascadeType.ALL, mappedBy = "site")
@@ -41,20 +43,32 @@ public class Page implements Serializable {
 ////    @Cascade(org.hibernate.annotations.CascadeType.REPLICATE)
 //    private List<Indexx> indexx;
 
-    public Page(int id, int siteId, String path, int code, String content) {
-        this.id = id;
-        this.siteId = siteId;
-        this.path = path;
-        this.code = code;
-        this.content = content;
-    }
-    public Page() {}
+//    public Page(int id, int siteId, String path, int code, String content) {
+//        this.id = id;
+//        this.siteId = siteId;
+//        this.path = path;
+//        this.code = code;
+//        this.content = content;
+//    }
+//    public Page() {}
 
+//    public void setContent(String content) {
+//        this.content = content == null ? "" : content.replaceAll("\\s*\\n\\s*", "");
+//    }
+@Transient
+private String title;
+    @Override
+    public int hashCode() {
+        return path != null && site != null ? path.hashCode() + site.hashCode() : 0;
+    }
+    @Override
+    public boolean equals(Object obj) {
+        Page p = (Page) obj;
+        return site == null ||
+                getClass() == obj.getClass() && path.equals(p.path) && site == p.site;
+    }
     @Override
     public String toString() {
         return "id: " + id + ", siteId: " + site.getId() + ", path: " + path;
-    }
-    public void setContent(String content) {
-        this.content = content == null ? "" : content.replaceAll("\\s*\\n\\s*", "");
     }
 }

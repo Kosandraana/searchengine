@@ -16,6 +16,14 @@ spring:
 #      generate-ddl: true
     show-sql: true
 
+    thymeleaf:
+      enabled: true
+      encoding: UTF-8
+
+logging:
+  level.root: INFO
+  file.name: logs/info.log
+
 
 indexing-settings:
   sites:
