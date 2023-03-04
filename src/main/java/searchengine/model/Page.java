@@ -15,7 +15,7 @@ import java.util.Set;
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "pages", indexes = {@Index(
+@Table(name = "page", indexes = {@Index(
         name = "path_id", columnList = "path_link", unique = true)})
 public class Page implements Serializable {
     @Id

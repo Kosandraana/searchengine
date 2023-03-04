@@ -13,7 +13,7 @@ import java.io.Serializable;
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "lemmas")
+@Table(name = "lemma")
 public class Lemma implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
