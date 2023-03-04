@@ -6,24 +6,21 @@ spring:
  datasource:
     username: root
     password: 97nastya
-    url: jdbc:mysql://localhost:3306/search_engine
+    url: jdbc:mysql://localhost:3306/
+      search_engine?useSSL=false
+      &requireSSL=false
+      &allowPublicKeyRetrieval=true&characterEncoding=utf8
  jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: update
-#      generate-ddl: true
+      ddl-auto: create
     show-sql: true
-
-    thymeleaf:
-      enabled: true
-      encoding: UTF-8
 
 logging:
   level.root: INFO
   file.name: logs/info.log
-
 
 indexing-settings:
   sites:

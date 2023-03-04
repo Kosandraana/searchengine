@@ -1,57 +1,143 @@
 package searchengine.controllers;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import searchengine.builder.PageBuilder;
-import searchengine.builder.SiteBuilder;
-import searchengine.config.ServerConfig;
-import searchengine.responses.ErrorResponse;
-import searchengine.responses.Response;
-import searchengine.services.IndexingService;
+import searchengine.dto.indexing.IndexingResponse;
+import searchengine.dto.search.SearchResponse;
+import searchengine.dto.statistics.StatisticsResponse;
+import searchengine.impl.IndexingService;
+import searchengine.impl.SearchService;
+import searchengine.impl.StatisticsService;
 
+// http://localhost:8080/
 @RestController
-//@Controller
+@RequiredArgsConstructor
 @RequestMapping("/api")
 public class ApiController {
-    public static final String INDEXING_IS_PROHIBITED = "Индексация на этом сервере запрещена";
-    public static final String INDEXING_IS_RUNNING = "Индексация уже запущена";
-    public static final String INDEXING_NOT_STARTED = "Индексация не была запущена";
-    private final ServerConfig serverConfig;
-    public ApiController(ServerConfig serverConfig) {
-        this.serverConfig = serverConfig;
+
+    private final SearchService searchService;
+    private final IndexingService indexingService;
+    private final StatisticsService statisticsService;
+
+    @GetMapping("/statistics")
+    public ResponseEntity<StatisticsResponse> statistics() {
+        return ResponseEntity.ok(statisticsService.getStatistics());
     }
+
     @GetMapping("/startIndexing")
-    public Response startIndexing() {
-        if (!serverConfig.isIndexingAvailable()) {
-            return new ErrorResponse(INDEXING_IS_PROHIBITED);
-        }
-        boolean isIndexing = SiteBuilder.buildAllSites();
-        if (isIndexing) {
-            return new ErrorResponse(INDEXING_IS_RUNNING);
-        }
-        return new Response();
+    public ResponseEntity<IndexingResponse> startIndexing() {
+        return ResponseEntity.ok(indexingService.getStartIndexing());
     }
+
     @GetMapping("/stopIndexing")
-    public Response stopIndexing() {
-        boolean isIndexing = SiteBuilder.stopIndexing();
-        if (isIndexing) {
-            return new Response();
-        }
-        return new ErrorResponse(INDEXING_NOT_STARTED);
+    public ResponseEntity<IndexingResponse> stopIndexing() {
+        return ResponseEntity.ok(indexingService.getStopIndexing());
     }
     @PostMapping("/indexPage")
-    public Response indexPage(@RequestParam(required = false) String url) {
-        if (!serverConfig.isIndexingAvailable()) {
-            return new ErrorResponse(INDEXING_IS_PROHIBITED);
-        }
-        String result = PageBuilder.indexPage(url);
-        if (result.equals(PageBuilder.OK)) {
-            return new Response();
-        }
-        return new ErrorResponse(result);
+    public ResponseEntity<IndexingResponse> indexPage(@RequestParam(name = "url") String url) {
+        return ResponseEntity.ok(indexingService.getIndexingPage(url));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<SearchResponse> search(
+            @RequestParam(name = "query", required = false) String query,
+            @RequestParam(name = "site", required = false) String site,
+            @RequestParam(name = "offset", defaultValue = "0") int offset,
+            @RequestParam(name = "limit", defaultValue = "20") int limit) {
+        return ResponseEntity.ok(searchService.getSearch(query, site, offset, limit));
     }
 }
+
+
+//package searchengine.controllers;
+//
+//import lombok.RequiredArgsConstructor;
+//import org.springframework.http.ResponseEntity;
+//import org.springframework.stereotype.Controller;
+//import org.springframework.web.bind.annotation.*;
+//import searchengine.dto.indexing.IndexingResponse;
+//import searchengine.dto.search.SearchResponse;
+//import searchengine.dto.statistics.StatisticsResponse;
+//import searchengine.impl.IndexingService;
+//import searchengine.impl.SearchService;
+//import searchengine.impl.StatisticsService;
+//@RestController
+//@RequiredArgsConstructor
+//@RequestMapping("/api")
+//public class ApiController {
+//
+//    private final SearchService searchService;
+//    private final IndexingService indexingService;
+//    private final StatisticsService statisticsService;
+//    @GetMapping("/statistics")
+//    public ResponseEntity<StatisticsResponse> statistics() {
+//        return ResponseEntity.ok(statisticsService.getStatistics());
+//    }
+//    @GetMapping("/startIndexing")
+//    public ResponseEntity<IndexingResponse> startIndexing() {
+//        return ResponseEntity.ok(indexingService.getStartIndexing());
+//    }
+//    @GetMapping("/stopIndexing")
+//    public ResponseEntity<IndexingResponse> stopIndexing() {
+//        return ResponseEntity.ok(indexingService.getStopIndexing());
+//    }
+//    @PostMapping("/indexPage")
+//    public ResponseEntity<IndexingResponse> indexPage(@RequestParam(name = "url") String url) {
+//        return ResponseEntity.ok(indexingService.getIndexingPage(url));
+//    }
+//    @GetMapping("/search")
+//    public ResponseEntity<SearchResponse> search(
+//            @RequestParam(name = "query", required = false) String query,
+//            @RequestParam(name = "site", required = false) String site,
+//            @RequestParam(name = "offset", defaultValue = "0") int offset,
+//            @RequestParam(name = "limit", defaultValue = "20") int limit) {
+//        return ResponseEntity.ok(searchService.getSearch(query, site, offset, limit));
+//    }
+//}
+
+//@RestController
+////@Controller
+//@RequestMapping("/api")
+//public class ApiController {
+//    public static final String INDEXING_IS_PROHIBITED = "Индексация на этом сервере запрещена";
+//    public static final String INDEXING_IS_RUNNING = "Индексация уже запущена";
+//    public static final String INDEXING_NOT_STARTED = "Индексация не была запущена";
+//    private final ServerConfig serverConfig;
+//    public ApiController(ServerConfig serverConfig) {
+//        this.serverConfig = serverConfig;
+//    }
+//    @GetMapping("/startIndexing")
+//    public Response startIndexing() {
+//        if (!serverConfig.isIndexingAvailable()) {
+//            return new ErrorResponse(INDEXING_IS_PROHIBITED);
+//        }
+//        boolean isIndexing = SiteBuilder.buildAllSites();
+//        if (isIndexing) {
+//            return new ErrorResponse(INDEXING_IS_RUNNING);
+//        }
+//        return new Response();
+//    }
+//    @GetMapping("/stopIndexing")
+//    public Response stopIndexing() {
+//        boolean isIndexing = SiteBuilder.stopIndexing();
+//        if (isIndexing) {
+//            return new Response();
+//        }
+//        return new ErrorResponse(INDEXING_NOT_STARTED);
+//    }
+//    @PostMapping("/indexPage")
+//    public Response indexPage(@RequestParam(required = false) String url) {
+//        if (!serverConfig.isIndexingAvailable()) {
+//            return new ErrorResponse(INDEXING_IS_PROHIBITED);
+//        }
+//        String result = PageBuilder.indexPage(url);
+//        if (result.equals(PageBuilder.OK)) {
+//            return new Response();
+//        }
+//        return new ErrorResponse(result);
+//    }
+//}
 
 //        private final IndexingService index;
 //        public ApiController(IndexingService index) {

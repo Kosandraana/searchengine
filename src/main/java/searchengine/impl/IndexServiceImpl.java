@@ -1,140 +1,186 @@
-//package searchengine.impl;
-//
-//import org.apache.commons.logging.Log;
-//import org.apache.commons.logging.LogFactory;
-//import org.springframework.stereotype.Service;
-//import searchengine.responses.ErrorResponse;
-//import searchengine.responses.Response;
-//import searchengine.services.Index;
-//import searchengine.services.IndexingService;
-//
-//@Service
-//public class IndexServiceImpl implements IndexingService {
-//    private final Index index;
-//
-//    private static final Log log = LogFactory.getLog(IndexServiceImpl.class);
-//
-//    public IndexServiceImpl(Index indexing) {
-//        this.index = indexing;
-//    }
-//
-//    @Override
-//    public Response startIndexingAll() {
-//        Response response;
-//        boolean indexx;
-//        try {
-//            indexx = index.allSiteIndexing();
-//            log.info("Попытка запуска индексации всех сайтов");
-//        } catch (InterruptedException e) {
-//            response = new ErrorResponse("Ошибка запуска индексации");
-//            log.error("Ошибка запуска индексации", e);
-//            return response;
-//        }
-//        if (indexx) {
-//            response = new Response();
-//            log.info("Индексация всех сайтов запущена");
-//        } else {
-//            response = new ErrorResponse("Индексация уже запущена");
-//            log.warn("Индексация всех сайтов не запущена. Т.к. процесс индексации был запущен ранее.");
-//        }
-//        return response;
-//    }
-//
-//    @Override
-//    public Response stopIndexing() {
-//        boolean indexx = index.stopSiteIndexing();
-//        log.info("Попытка остановки индексации");
-//        Response response;
-//        if (indexx) {
-//            response = new Response();
-//            log.info("Индексация остановлена");
-//        } else {
-//            response = new ErrorResponse("Индексация не запущена");
-//            log.warn("Остановка индексации не может быть выполнена, потому что процесс индексации не запущен.");
-//        }
-//        return response;
-//    }
-//
-//    @Override
-//    public Response startIndexingOne(String url) {
-//        Response resp;
-//        String response;
-//        try {
-//            response = index.checkedSiteIndexing(url);
-//        } catch (InterruptedException e) {
-//            resp = new ErrorResponse("Ошибка запуска индексации");
-//            return resp;
-//        }
-//
-//        if (response.equals("not found")) {
-//            resp = new ErrorResponse("Страница находится за пределами сайтов," +
-//                    " указанных в конфигурационном файле");
-//        } else if (response.equals("false")) {
-//            resp = new ErrorResponse("Индексация страницы уже запущена");
-//        } else {
-//            resp = new Response();
-//        }
-//        return resp;
-//    }
-//
-//
-//    //
-////    public IndexServiceImpl(String linkUrl) {
-////    }
-////    public IndexServiceImpl() {
-////
-////    }
-////
-////    public void startIndexing() {
-////        addSites();
-////    }
-////
-////    public void addSites() {
-//////        LocalDateTime localDateTime = LocalDateTime.now();
-////        Site site = new Site();
-////        site.setId(0);
-////        site.setStatus(StatusType.INDEXING);
-////        site.setStatusTime(new Date().getTime());
-////        site.setLastError(lastError);
-////        site.setUrl(site.getUrl());
-////        site.setName(site.getName());
-////        siteRepository.save(site);
-////        site.setStatus(StatusType.INDEXED);
-////        siteRepository.save(site);
-////    }
-////
-////    public void addPages() {
-////        LocalDateTime localDateTime = LocalDateTime.now();
-////        Page page = new Page();
-////        page.setId(0);
-////        page.setContent(page.getContent());
-////        page.setCode(page.getCode());
-////        page.setPath(page.getPath());
-////        page.setSiteId(page.getId());
-////        pageRepository.save(page);
-////    }
-//}
-////
-////    public static boolean IsStart() {
-////        return IsStart();
-////    }
-////
-////    protected void compute() {
-////        try {
-////            Document document = (Document) Jsoup.connect(site.getUrl()).get();
-////            Elements elements = document.select("a[href]");
-////            List<ForkJoinTask<Void>> tasks = new ArrayList<>();
-////            for (Element element : elements) {
-////                String linkUrl = element.attr("href");
-////                IndexServiceImpl task = new IndexServiceImpl(linkUrl);
-//////                tasks.add(task.fork());
-////            }
-////            for (ForkJoinTask<Void> task : tasks) {
-////                task.join();
-//////                pageRepository.saveAll(elements);
-////            }
-////        } catch (Exception exception) {
-////            exception.printStackTrace();
-////        }
-////    }
-////}
+package searchengine.impl;
+
+import lombok.RequiredArgsConstructor;
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
+import org.springframework.stereotype.Service;
+import searchengine.config.Connect;
+import searchengine.config.SiteConfig;
+import searchengine.config.SitesList;
+import searchengine.dto.indexing.IndexingResponse;
+import searchengine.model.*;
+import searchengine.repository.IndexRepository;
+import searchengine.repository.LemmaRepository;
+import searchengine.repository.PageRepository;
+import searchengine.repository.SiteRepository;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ForkJoinPool;
+
+@Service
+@RequiredArgsConstructor
+public class IndexServiceImpl implements IndexingService {
+
+    private final SitesList sites;
+    private final Connect connect;
+    private final SiteRepository sitesRepository;
+    private final PageRepository pagesRepository;
+    private final IndexRepository indexesRepository;
+    private final LemmaRepository lemmasRepository;
+    private List<Thread> threads = new ArrayList<>();
+    private IndexingResponse indexingResponse = new IndexingResponse();
+    private boolean stopFlag = false;
+
+    public boolean isStopFlag() {
+        return stopFlag;
+    }
+
+    @Override
+    public IndexingResponse getStartIndexing() {
+        if (threads.size() == 0) {
+            lemmasRepository.deleteAll();
+            sitesRepository.deleteAll();
+            startIndexing();
+            indexingResponse.setResult(true);
+            indexingResponse.setError(null);
+        } else {
+            indexingResponse.setResult(false);
+            indexingResponse.setError("Индексация уже запущена");
+        }
+        return indexingResponse;
+    }
+
+    @Override
+    public Site creatingSite(SiteConfig siteConfig, StatusType status) {
+        Site site = new Site();
+        site.setStatus(status);
+        site.setStatusTime(LocalDateTime.now());
+        site.setUrl(siteConfig.getUrl());
+        site.setName(siteConfig.getName());
+        site.setPages(new HashSet<>());
+        site.setLemmas(new HashSet<>());
+        sitesRepository.save(site);
+        return site;
+    }
+
+    private void startIndexing() {
+        for (int index = 0; index < sites.getSites().size(); index++) {
+            Site site = creatingSite(sites.getSites().get(index), StatusType.INDEXING);
+            Thread thread = new Thread(() -> {
+                CreatingMapServiceImpl creatingMap = new CreatingMapServiceImpl(
+                        site, site.getUrl(), connect, this,
+                        sitesRepository, pagesRepository,
+                        indexesRepository, lemmasRepository);
+                ForkJoinPool forkJoinPool = new ForkJoinPool();
+                forkJoinPool.invoke(creatingMap);
+                while(Thread.currentThread().isAlive()) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        forkJoinPool.shutdownNow();
+                        site.setLastError("Индексация остановлена пользователем");
+                        site.setStatus(StatusType.FAILED);
+                        sitesRepository.save(site);
+                        break;
+                    }
+                    if (forkJoinPool.getActiveThreadCount() == 0) {
+                        site.setStatus(StatusType.INDEXED);
+                        sitesRepository.save(site);
+                        break;
+                    }
+                }
+            });
+            thread.setName(site.getUrl());
+            threads.add(thread);
+        }
+        threads.forEach(Thread::start);
+    }
+
+    @Override
+    public IndexingResponse getStopIndexing() {
+        if (threads.size() > 0) {
+            stopFlag = true;
+            for (Thread thread : threads)
+                thread.interrupt();
+            threads.clear();
+            indexingResponse.setResult(true);
+            indexingResponse.setError(null);
+        } else {
+            indexingResponse.setResult(false);
+            indexingResponse.setError("Индексация не запущена");
+        }
+        return indexingResponse;
+    }
+
+    @Override
+    public IndexingResponse getIndexingPage(String url) {
+        boolean indexingPage = false;
+        for (SiteConfig siteConfig : sites.getSites()) {
+            if (url.contains(siteConfig.getUrl())) {
+                try {
+                    Connection connection = Jsoup.connect(url).userAgent(connect.getUserAgent())
+                            .referrer(connect.getReferrer()).maxBodySize(0);
+                    int statusCode = connection.execute().statusCode();
+                    if (statusCode < 400) {
+                        String content = connection.get().toString();
+                        indexingPage(siteConfig, url, statusCode, content);
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                indexingPage = true;
+                break;
+            }
+        }
+        if (indexingPage) {
+            indexingResponse.setResult(true);
+            indexingResponse.setError(null);
+        } else {
+            indexingResponse.setResult(false);
+            indexingResponse.setError(
+                    "Данная страница находится за пределами сайтов, указанных в конфигурационном файле");
+        }
+        return indexingResponse;
+    }
+
+    private void indexingPage(SiteConfig siteConfig, String url, int statusCode, String content) {
+        Thread thread = new Thread(() -> {
+            try {
+                Site site = sitesRepository.findByUrl(siteConfig.getUrl());
+                Page page = new Page();
+                String pathLink = url.substring(siteConfig.getUrl().length() - 1);
+                boolean newPage = false;
+                if (site == null) {
+                    site = creatingSite(siteConfig, StatusType.INDEXING);
+                    page.setPathLink(url);
+                    page.setCode(statusCode);
+                    page.setContent(content
+                            /*Files.readString(Paths.get("D:/install/IntelliJ IDEA/ДЗ/из стрима.txt"))*/);
+                    page.setSite(site);
+                    page.setIndexes(new HashSet<>());
+                    pagesRepository.save(page);
+                    newPage = true;
+                }
+                CreatingMapServiceImpl creatingMapServiceImpl = new CreatingMapServiceImpl(
+                        site, url, connect, this,
+                        sitesRepository, pagesRepository,
+                        indexesRepository, lemmasRepository);
+                page = pagesRepository.findByPathLinkAndSite(pathLink, site);
+                if (page != null && !newPage) {
+                    creatingMapServiceImpl.deleteLemmas(page.getContent());
+                    pagesRepository.delete(page);
+                }
+                //String content = pagesRepository.findByPathLink(url).getContent(); //connection.get().toString();
+                creatingMapServiceImpl.addNewURL(url, statusCode, content);
+                site.setStatus(StatusType.INDEXED);
+                sitesRepository.save(site);
+            } catch (Exception ex) {
+                Site site = sitesRepository.findByUrl(siteConfig.getUrl());
+                site.setLastError(ex.toString());
+                site.setStatus(StatusType.FAILED);
+                sitesRepository.save(site);
+                ex.printStackTrace();
+            }
+        });
+        thread.start();
+    }
+}
