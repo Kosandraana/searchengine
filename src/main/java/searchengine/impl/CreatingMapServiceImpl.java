@@ -30,7 +30,7 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
     private final IndexingService indexingService;
     private final SiteRepository sitesRepository;
     private final PageRepository pagesRepository;
-    private final IndexRepository indexesRepository;
+    private final IndexRepository indexRepository;
     private final LemmaRepository lemmasRepository;
 
     @Override
@@ -43,7 +43,7 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
             CreatingMapServiceImpl creatingMapServiceImpl = new CreatingMapServiceImpl(
                     mainSite, link, connect, indexingService,
                     sitesRepository, pagesRepository,
-                    indexesRepository, lemmasRepository);
+                    indexRepository, lemmasRepository);
             tasks.add(creatingMapServiceImpl);
         }
         for (CreatingMapServiceImpl task : tasks)
@@ -131,7 +131,7 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
             index.setPage(page);
             index.setLemmaId(lemma.getId());
             index.setRank(mapLemmas.get(newLemma));
-            indexesRepository.save(index);
+            indexRepository.save(index);
         }
     }
 

@@ -65,8 +65,8 @@ public class IndexServiceImpl implements IndexingService {
     }
 
     private void startIndexing() {
-        for (int index = 0; index < sites.getSites().size(); index++) {
-            Site site = creatingSite(sites.getSites().get(index), StatusType.INDEXING);
+        for (int indexx = 0; indexx < sites.getSites().size(); indexx++) {
+            Site site = creatingSite(sites.getSites().get(indexx), StatusType.INDEXING);
             Thread thread = new Thread(() -> {
                 CreatingMapServiceImpl creatingMap = new CreatingMapServiceImpl(
                         site, site.getUrl(), connect, this,
