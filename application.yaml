@@ -1,26 +1,30 @@
 # example values
 server:
- port: 8080
+  port: 8080
 
 spring:
- datasource:
+  datasource:
     username: root
     password: 97nastya
     url: jdbc:mysql://localhost:3306/
       search_engine?useSSL=false
       &requireSSL=false
       &allowPublicKeyRetrieval=true&characterEncoding=utf8
- jpa:
+  jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     show-sql: true
 
 logging:
   level.root: INFO
   file.name: logs/info.log
+
+connect-settings:
+  userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (HTML, like Gecko) Chrome/108.0.0.0 YaBrowser/23.1.1.1138 Yowser/2.5 Safari/537.36
+  referrer: https://ya.ru
 
 indexing-settings:
   sites:

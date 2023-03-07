@@ -32,8 +32,8 @@ public class Site {
     private String url;
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
-    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Page> pages;
-    @OneToMany(mappedBy = "site")
+    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY)
     private Set<Lemma> lemmas;
 }

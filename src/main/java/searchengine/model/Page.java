@@ -24,7 +24,8 @@ public class Page implements Serializable {
     @Column(name = "path_link", nullable = false)
     private String pathLink;
     private int code;
-    @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
+    @Column(columnDefinition = "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci",
+            nullable = false, length = 16777215)
     private String content;
     @ManyToOne(optional = false)
     @JoinColumn(name = "site_id", nullable = false)

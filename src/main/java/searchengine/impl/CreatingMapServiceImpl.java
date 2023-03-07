@@ -7,10 +7,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searchengine.config.Connect;
-import searchengine.model.Indexx;
-import searchengine.model.Lemma;
-import searchengine.model.Page;
-import searchengine.model.Site;
+import searchengine.model.*;
 import searchengine.repository.IndexRepository;
 import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
@@ -80,6 +77,10 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
             }
         } catch (Exception ex) {
             mainSite.setLastError(ex.toString());
+            if (indexingService.isStopFlag()) {
+                mainSite.setLastError("Индексация остановлена пользователем");
+                mainSite.setStatus(StatusType.FAILED);
+            }
             sitesRepository.save(mainSite);
             ex.printStackTrace();
         }
@@ -93,22 +94,29 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
     }
 
     public synchronized boolean addNewURL(String url, int statusCode, String content) throws IOException {
-        String pathLink = url.substring(mainSite.getUrl().length()-1);
-        Page page = pagesRepository.findByPathLinkAndSite(pathLink, mainSite);
-        if(page == null) {
-            page = new Page();
-            page.setPathLink(pathLink);
-            page.setCode(statusCode);
-            page.setContent(content);
-            page.setSite(mainSite);
-            page.setIndexes(new HashSet<>());
-            pagesRepository.save(page);
-            mainSite.setStatusTime(LocalDateTime.now());
-            sitesRepository.save(mainSite);
-            if (statusCode < 400)
-                addLemmasAndIndexes(content, page);
-            return true;
-        }
+        if (indexingService.isStopFlag())
+            return false;
+        try {
+            String pathLink = url.substring(mainSite.getUrl().length() - 1);
+            Page page = pagesRepository.findByPathLinkAndSite(pathLink, mainSite);
+
+            if (page == null) {
+                page = new Page();
+                page.setPathLink(pathLink);
+                page.setCode(statusCode);
+                page.setContent(content);
+                page.setSite(mainSite);
+                page.setIndexes(new HashSet<>());
+                pagesRepository.save(page);
+                mainSite.setStatusTime(LocalDateTime.now());
+                sitesRepository.save(mainSite);
+                if (statusCode < 400)
+                    addLemmasAndIndexes(content, page);
+                return true;
+            }
+        }        catch (Exception ex){
+                ex.printStackTrace();
+            }
         return false;
     }
 
@@ -117,6 +125,8 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
         Map<String, Integer> mapLemmas = new HashMap<>(creatingLemmas.collectLemmas(content));
         Set<String> setLemmas = new HashSet<>(mapLemmas.keySet());
         for (String newLemma : setLemmas) {
+            if (indexingService.isStopFlag())
+                return;
             Lemma lemma = lemmasRepository.findByLemmaAndSite(newLemma, mainSite);
             if (lemma == null) {
                 lemma = new Lemma();

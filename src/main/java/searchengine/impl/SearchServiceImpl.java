@@ -23,7 +23,7 @@ public class SearchServiceImpl implements SearchService {
     private final SitesList sites;
     private final SiteRepository sitesRepository;
     private final PageRepository pagesRepository;
-    private final IndexRepository indexesRepository;
+    private final IndexRepository indexRepository;
     private final LemmaRepository lemmasRepository;
     private LemmaFinder creatingLemmas;
     private Set<String> querySet;
@@ -111,7 +111,7 @@ public class SearchServiceImpl implements SearchService {
         for (Lemma lemma : sortLemmas) {
             if (first.getFrequency() == lemma.getFrequency() && first.getLemma().equals(lemma.getLemma()))
                 addPage = true;
-            Iterable<Indexx> indexIterable = indexesRepository.findAllByLemmaId(lemma.getId());
+            Iterable<Indexx> indexIterable = indexRepository.findAllByLemmaId(lemma.getId());
             for (Indexx index : indexIterable) {
                 Page page = index.getPage();
                 String link = page.getPathLink();

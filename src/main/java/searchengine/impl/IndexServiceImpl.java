@@ -1,6 +1,7 @@
 package searchengine.impl;
 
 import lombok.RequiredArgsConstructor;
+
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ public class IndexServiceImpl implements IndexingService {
     private final Connect connect;
     private final SiteRepository sitesRepository;
     private final PageRepository pagesRepository;
-    private final IndexRepository indexesRepository;
+    private final IndexRepository indexRepository;
     private final LemmaRepository lemmasRepository;
     private List<Thread> threads = new ArrayList<>();
     private IndexingResponse indexingResponse = new IndexingResponse();
@@ -41,6 +42,7 @@ public class IndexServiceImpl implements IndexingService {
         if (threads.size() == 0) {
             lemmasRepository.deleteAll();
             sitesRepository.deleteAll();
+            stopFlag = false;
             startIndexing();
             indexingResponse.setResult(true);
             indexingResponse.setError(null);
@@ -71,13 +73,14 @@ public class IndexServiceImpl implements IndexingService {
                 CreatingMapServiceImpl creatingMap = new CreatingMapServiceImpl(
                         site, site.getUrl(), connect, this,
                         sitesRepository, pagesRepository,
-                        indexesRepository, lemmasRepository);
+                        indexRepository, lemmasRepository);
                 ForkJoinPool forkJoinPool = new ForkJoinPool();
-                forkJoinPool.invoke(creatingMap);
+                forkJoinPool.execute(creatingMap);
                 while(Thread.currentThread().isAlive()) {
                     if (Thread.currentThread().isInterrupted()) {
                         forkJoinPool.shutdownNow();
-                        site.setLastError("Индексация остановлена пользователем");
+                        break;
+                    } else if (forkJoinPool.getActiveThreadCount() == 0) {
                         site.setStatus(StatusType.FAILED);
                         sitesRepository.save(site);
                         break;
@@ -125,6 +128,11 @@ public class IndexServiceImpl implements IndexingService {
                         indexingPage(siteConfig, url, statusCode, content);
                     }
                 } catch (Exception ex) {
+                    Site site = sitesRepository.findByUrl(siteConfig.getUrl());
+                    if (site != null) {
+                        site.setLastError(ex.toString());
+                        sitesRepository.save(site);
+                    }
                     ex.printStackTrace();
                 }
                 indexingPage = true;
@@ -144,8 +152,8 @@ public class IndexServiceImpl implements IndexingService {
 
     private void indexingPage(SiteConfig siteConfig, String url, int statusCode, String content) {
         Thread thread = new Thread(() -> {
+            Site site = sitesRepository.findByUrl(siteConfig.getUrl());
             try {
-                Site site = sitesRepository.findByUrl(siteConfig.getUrl());
                 Page page = new Page();
                 String pathLink = url.substring(siteConfig.getUrl().length() - 1);
                 boolean newPage = false;
@@ -163,7 +171,7 @@ public class IndexServiceImpl implements IndexingService {
                 CreatingMapServiceImpl creatingMapServiceImpl = new CreatingMapServiceImpl(
                         site, url, connect, this,
                         sitesRepository, pagesRepository,
-                        indexesRepository, lemmasRepository);
+                        indexRepository, lemmasRepository);
                 page = pagesRepository.findByPathLinkAndSite(pathLink, site);
                 if (page != null && !newPage) {
                     creatingMapServiceImpl.deleteLemmas(page.getContent());
@@ -174,13 +182,14 @@ public class IndexServiceImpl implements IndexingService {
                 site.setStatus(StatusType.INDEXED);
                 sitesRepository.save(site);
             } catch (Exception ex) {
-                Site site = sitesRepository.findByUrl(siteConfig.getUrl());
-                site.setLastError(ex.toString());
-                site.setStatus(StatusType.FAILED);
-                sitesRepository.save(site);
+                if (site != null) {
+                    site.setLastError(ex.toString());
+                    sitesRepository.save(site);
+                }
                 ex.printStackTrace();
             }
         });
         thread.start();
     }
 }
+
