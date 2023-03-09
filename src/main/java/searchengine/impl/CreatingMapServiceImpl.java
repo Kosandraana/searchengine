@@ -50,8 +50,8 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
     }
 
     private Set<String> parsePage(String url) {
-        long start = System.currentTimeMillis();
-        System.out.println("start parsePage - " + url);
+//        long start = System.currentTimeMillis();
+//        System.out.println("start parsePage - " + url);
         Set<String> links = new HashSet<>();
         try {
             if (checkURL(url)) {
@@ -69,7 +69,7 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
                         int statusCode = connection.execute().statusCode();
                         if (addNewURL(link, statusCode, content)) {
                             links.add(link);
-                            System.out.println("add new link - " + link);
+//                            System.out.println("add new link - " + link);
                         }
                     }
                 }
@@ -82,10 +82,10 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
                 mainSite.setStatus(StatusType.FAILED);
             }
             sitesRepository.save(mainSite);
-            ex.printStackTrace();
+//            ex.printStackTrace();
         }
-        System.out.println("end parsePage - " + url);
-        System.out.println("time working  - " + (System.currentTimeMillis() - start) + " ms");
+//        System.out.println("end parsePage - " + url);
+//        System.out.println("time working  - " + (System.currentTimeMillis() - start) + " ms");
         return links;
     }
 
@@ -93,11 +93,10 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
         return url.startsWith(mainSite.getUrl()) && (url.endsWith("/") || url.endsWith(".html"));
     }
 
-    public synchronized boolean addNewURL(String url, int statusCode, String content) throws IOException {
+    public boolean addNewURL(String url, int statusCode, String content) throws IOException {
         if (indexingService.isStopFlag())
             return false;
-        try {
-            String pathLink = url.substring(mainSite.getUrl().length() - 1);
+        String pathLink = url.substring(mainSite.getUrl().length() - 1);
             Page page = pagesRepository.findByPathLinkAndSite(pathLink, mainSite);
 
             if (page == null) {
@@ -110,20 +109,18 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
                 pagesRepository.save(page);
                 mainSite.setStatusTime(LocalDateTime.now());
                 sitesRepository.save(mainSite);
-                if (statusCode < 400)
-                    addLemmasAndIndexes(content, page);
+                if (statusCode < 400) {
+                    LemmaFinder creatingLemmas = LemmaFinder.getInstance();
+                    Map<String, Integer> mapLemmas = new HashMap<>(creatingLemmas.collectLemmas(content));
+                    Set<String> setLemmas = new HashSet<>(mapLemmas.keySet());
+                    addLemmasAndIndexes(mapLemmas, setLemmas, page);
+                }
                 return true;
             }
-        }        catch (Exception ex){
-                ex.printStackTrace();
-            }
-        return false;
-    }
+            return false;
+        }
 
-    private synchronized void addLemmasAndIndexes(String content, Page page) throws IOException {
-        LemmaFinder creatingLemmas = LemmaFinder.getInstance();
-        Map<String, Integer> mapLemmas = new HashMap<>(creatingLemmas.collectLemmas(content));
-        Set<String> setLemmas = new HashSet<>(mapLemmas.keySet());
+        private synchronized void addLemmasAndIndexes(Map<String, Integer> mapLemmas, Set<String> setLemmas, Page page) {
         for (String newLemma : setLemmas) {
             if (indexingService.isStopFlag())
                 return;
@@ -145,11 +142,8 @@ public class CreatingMapServiceImpl extends RecursiveAction implements CreatingM
         }
     }
 
-    public synchronized void deleteLemmas(String content) throws IOException {
-        LemmaFinder creatingLemmas = LemmaFinder.getInstance();
-        Map<String, Integer> mapLemmas = new HashMap<>(creatingLemmas.collectLemmas(content));
-        Set<String> setLemmas = new HashSet<>(mapLemmas.keySet());
-        for (String newLemma : setLemmas) {
+        public synchronized void deleteLemmas (Set<String> setLemmas) {
+            for (String newLemma : setLemmas) {
             Lemma lemma = lemmasRepository.findByLemmaAndSite(newLemma, mainSite);
             if (lemma != null) {
                 if (lemma.getFrequency() == 1)

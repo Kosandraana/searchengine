@@ -24,6 +24,5 @@ import java.util.List;
 
     @Repository
     public interface PageRepository extends CrudRepository<Page, Integer> {
-        Page findByPathLink(String pathLink);
         Page findByPathLinkAndSite(String pathLink, Site site);
     }

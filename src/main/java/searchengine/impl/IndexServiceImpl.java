@@ -76,7 +76,7 @@ public class IndexServiceImpl implements IndexingService {
                         indexRepository, lemmasRepository);
                 ForkJoinPool forkJoinPool = new ForkJoinPool();
                 forkJoinPool.execute(creatingMap);
-                while(Thread.currentThread().isAlive()) {
+                while (Thread.currentThread().isAlive()) {
                     if (Thread.currentThread().isInterrupted()) {
                         forkJoinPool.shutdownNow();
                         break;
@@ -133,7 +133,7 @@ public class IndexServiceImpl implements IndexingService {
                         site.setLastError(ex.toString());
                         sitesRepository.save(site);
                     }
-                    ex.printStackTrace();
+//                    ex.printStackTrace();
                 }
                 indexingPage = true;
                 break;
@@ -159,7 +159,7 @@ public class IndexServiceImpl implements IndexingService {
                 boolean newPage = false;
                 if (site == null) {
                     site = creatingSite(siteConfig, StatusType.INDEXING);
-                    page.setPathLink(url);
+                    page.setPathLink(pathLink);
                     page.setCode(statusCode);
                     page.setContent(content
                             /*Files.readString(Paths.get("D:/install/IntelliJ IDEA/ДЗ/из стрима.txt"))*/);
@@ -174,7 +174,10 @@ public class IndexServiceImpl implements IndexingService {
                         indexRepository, lemmasRepository);
                 page = pagesRepository.findByPathLinkAndSite(pathLink, site);
                 if (page != null && !newPage) {
-                    creatingMapServiceImpl.deleteLemmas(page.getContent());
+                    LemmaFinder creatingLemmas = LemmaFinder.getInstance();
+                    Map<String, Integer> mapLemmas = new HashMap<>(creatingLemmas.collectLemmas(page.getContent()));
+                    Set<String> setLemmas = new HashSet<>(mapLemmas.keySet());
+                    creatingMapServiceImpl.deleteLemmas(setLemmas);
                     pagesRepository.delete(page);
                 }
                 //String content = pagesRepository.findByPathLink(url).getContent(); //connection.get().toString();
@@ -184,9 +187,10 @@ public class IndexServiceImpl implements IndexingService {
             } catch (Exception ex) {
                 if (site != null) {
                     site.setLastError(ex.toString());
+                    site.setStatus(StatusType.FAILED);
                     sitesRepository.save(site);
                 }
-                ex.printStackTrace();
+//                ex.printStackTrace();
             }
         });
         thread.start();

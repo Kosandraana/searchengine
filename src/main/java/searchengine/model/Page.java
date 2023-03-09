@@ -21,7 +21,7 @@ public class Page implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-    @Column(name = "path_link", nullable = false)
+    @Column(name = "path_link", columnDefinition = "TEXT", nullable = false, unique = true)
     private String pathLink;
     private int code;
     @Column(columnDefinition = "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci",
